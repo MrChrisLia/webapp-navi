@@ -938,7 +938,7 @@ public class HermesSyncController {
 
     private String extractJsonStringValue(String json, String key) {
         java.util.regex.Matcher m = java.util.regex.Pattern
-                .compile("\"" + java.util.regex.Pattern.quote(key) + "\"\\s*:\\s*\"(.*?)\"", java.util.regex.Pattern.DOTALL)
+                .compile("\"" + java.util.regex.Pattern.quote(key) + "\"\\s*:\\s*\"((?:\\\\.|[^\"])*)\"", java.util.regex.Pattern.DOTALL)
                 .matcher(json);
         if (!m.find()) {
             return "";
