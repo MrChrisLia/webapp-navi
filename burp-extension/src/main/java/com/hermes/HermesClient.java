@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.net.HttpURLConnection;
+import java.net.SocketTimeoutException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -111,14 +112,18 @@ public class HermesClient {
                 + "\"scope_name\":\"" + JsonUtil.escape(scopeName) + "\","
                 + "\"message\":\"" + JsonUtil.escape(message) + "\""
                 + "}";
-        return request("POST", endpoint, payload);
+        return request("POST", endpoint, payload, 90_000);
     }
 
     private ApiResult request(String method, String endpoint, String payload) {
+        return request(method, endpoint, payload, 10_000);
+    }
+
+    private ApiResult request(String method, String endpoint, String payload, int readTimeoutMs) {
         try {
             HttpURLConnection conn = (HttpURLConnection) URI.create(endpoint).toURL().openConnection();
             conn.setConnectTimeout(3000);
-            conn.setReadTimeout(10000);
+            conn.setReadTimeout(readTimeoutMs);
             conn.setRequestMethod(method);
             conn.setRequestProperty("Accept", "application/json");
 
@@ -140,6 +145,9 @@ public class HermesClient {
                 api.logging().logToError(method + " " + endpoint + " returned HTTP " + code + formatRetryAfter(conn) + ": " + truncate(responseText));
             }
             return new ApiResult(ok, code, responseText, rateLimited);
+        } catch (SocketTimeoutException e) {
+            api.logging().logToError(method + " " + endpoint + " timed out", e);
+            return new ApiResult(false, 0, "I/O timeout after " + (readTimeoutMs / 1000) + "s waiting for backend response.", false);
         } catch (IOException e) {
             api.logging().logToError(method + " " + endpoint + " request failed", e);
             return new ApiResult(false, 0, "I/O error: " + e.getMessage(), false);

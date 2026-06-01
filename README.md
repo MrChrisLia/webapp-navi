@@ -247,6 +247,33 @@ Fix:
 2. Restart backend after editing `.env`.
 3. Re-check `/health` values before testing chat in Burp.
 
+### `/health` still shows wrong model (for example `model: "nous"`)
+
+If chat keeps saying model not found, trust `/health` as the source of truth.
+If `/health` shows `"model":"nous"`, your backend process is still using that value.
+
+Fix:
+
+1. Verify the repo-root `.env` value:
+   ```bash
+   grep -n '^HERMES_' .env
+   ```
+2. Check for duplicate `.env` files in nearby folders:
+   ```bash
+   find .. -maxdepth 3 -name .env
+   ```
+3. Fully restart backend from the repo root:
+   ```bash
+   pkill -f "uvicorn hermes_api.main:app" || true
+   uvicorn hermes_api.main:app --host 0.0.0.0 --port 8000
+   ```
+4. Confirm the new value is active:
+   ```bash
+   curl -sS http://localhost:8000/health
+   ```
+
+Only continue testing Burp chat after `/health` shows your intended model ID.
+
 ### Chat returns `404 Not Found` on `/chat/completions`
 
 This usually means one of these:
@@ -266,3 +293,20 @@ curl -sS http://127.0.0.1:8645/v1/models
 Then set `HERMES_MODEL` to an ID returned by `/v1/models`.
 
 If you want OpenRouter-specific models, do not use `--provider nous` unless that model is actually available there.
+
+### Chat fails with `HTTP 0` and `I/O timeout`
+
+This means Burp reached the Hermes backend, but the chat response took too long.
+Large/slow models or temporary provider latency can trigger this.
+
+Checks:
+
+1. Confirm backend is still alive while chat is running:
+   ```bash
+   curl -sS http://localhost:8000/health
+   ```
+2. Retry with a short prompt and verify proxy readiness:
+   ```bash
+   hermes proxy status
+   ```
+3. Ensure your selected model is valid for the current proxy provider (`/v1/models`).
