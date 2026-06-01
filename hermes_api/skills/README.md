@@ -5,7 +5,7 @@ Hermes can load custom skills from Markdown files in this directory.
 Default directory:
 
 - `/app/hermes_api/skills` inside Docker
-- `/Users/christopher/HermesWorkspace/Projects/webapp-navi/hermes_api/skills` on host
+- `/Users/christopher/HermesWorkspace/Projects/Hermes Burpsuite Agent/hermes_api/skills` on host
 
 Override path with:
 

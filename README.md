@@ -7,8 +7,8 @@ It runs a local backend on `http://localhost:8000` and a Burp extension that syn
 ## 1) Clone
 
 ```bash
-git clone https://github.com/MrChrisLia/webapp-navi.git
-cd webapp-navi
+git clone https://github.com/MrChrisLia/hermes-burpsuite-agent.git
+cd hermes-burpsuite-agent
 ```
 
 ## 2) Install Prerequisites
