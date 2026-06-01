@@ -4,9 +4,10 @@ This project runs locally.
 
 It includes:
 - A local backend at `http://localhost:8000`
+- A Hermes proxy for model access
 - A Burp extension that syncs Proxy traffic into that backend
 
-## 1) Install Prerequisites
+## 1) Install System Prerequisites
 
 You need:
 - Python 3.10+
@@ -14,12 +15,19 @@ You need:
 - Gradle
 - Burp Suite
 
+Hermes download/install page:
+- [Hermes Agent Installation](https://hermes-agent.nousresearch.com/docs/getting-started/installation)
+
 Example (Ubuntu/Debian):
 
 ```bash
 sudo apt update
 sudo apt install -y python3 python3-venv python3-pip python3-uvicorn openjdk-17-jdk gradle
 ```
+
+Why this step exists:
+- Installs system tools (`python3`, `java`, `gradle`, etc.).
+- Does not install this project’s Python packages.
 
 Verify:
 
@@ -36,7 +44,7 @@ git clone https://github.com/MrChrisLia/hermes-burpsuite-agent.git
 cd hermes-burpsuite-agent
 ```
 
-## 3) Create Python Environment + Install Dependencies
+## 3) Install Python Dependencies
 
 ```bash
 python3 -m venv .venv
