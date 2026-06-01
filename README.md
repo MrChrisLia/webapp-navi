@@ -53,22 +53,35 @@ HERMES_PROVIDER=mock
 
 ### Use your authenticated Hermes Agent model runtime
 
-If you already authenticated with `hermes model`, run the Hermes local proxy in another terminal:
+`hermes proxy` is a command group in newer Hermes CLI versions, so running it by itself shows help text. Start the proxy with a subcommand:
 
 ```bash
-hermes proxy
+hermes proxy start
+```
+
+Optional flags:
+
+```bash
+hermes proxy start --provider nous --host 127.0.0.1 --port 8645
+```
+
+Sanity-check readiness:
+
+```bash
+hermes proxy status
+hermes proxy providers
 ```
 
 Then set in `.env`:
 
 ```bash
 HERMES_PROVIDER=hermes_agent
-HERMES_BASE_URL=http://127.0.0.1:4141/v1
+HERMES_BASE_URL=http://127.0.0.1:8645/v1
 HERMES_MODEL=YOUR_MODEL_NAME
 HERMES_API_KEY=optional
 ```
 
-Use the host/port shown by your `hermes proxy` output.
+Use the exact host/port shown by `hermes proxy start` if you changed defaults.
 
 ## 4) Start Hermes Backend
 
@@ -172,6 +185,22 @@ Check:
    curl http://localhost:8000/health
    ```
 3. Extension `Hermes Backend` is exactly `http://localhost:8000`
+
+### `hermes proxy` only prints usage/help
+
+This is expected on newer CLI versions when no subcommand is supplied.
+
+Use:
+
+```bash
+hermes proxy start
+```
+
+Not:
+
+```bash
+hermes proxy
+```
 
 ### App summary is empty
 
