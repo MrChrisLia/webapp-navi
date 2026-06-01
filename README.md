@@ -37,6 +37,35 @@ curl -sS http://localhost:8000/health
 
 Expected: JSON with `"status":"ok"`.
 
+### Optional: Use your logged-in Hermes Agent runtime
+
+By default this project runs with `HERMES_PROVIDER=mock` (no login needed).
+
+If you want this backend to call your already-authenticated Hermes agent/model
+runtime, set provider env vars before starting Docker:
+
+```bash
+cat > .env <<'EOF'
+HERMES_PROVIDER=hermes_agent
+HERMES_BASE_URL=http://YOUR_AGENT_HOST:PORT/v1
+HERMES_MODEL=YOUR_MODEL_NAME
+HERMES_API_KEY=optional
+EOF
+```
+
+Then restart:
+
+```bash
+docker compose down
+docker compose up -d --build
+```
+
+Health check will show active provider:
+
+```bash
+curl -sS http://localhost:8000/health
+```
+
 ## 3) Build the Burp Extension JAR
 
 Important: the `.jar` is not stored in GitHub. You must build it after cloning.
