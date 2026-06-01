@@ -78,10 +78,11 @@ Then set in `.env`:
 HERMES_PROVIDER=hermes_agent
 HERMES_BASE_URL=http://127.0.0.1:8645/v1
 HERMES_MODEL=YOUR_MODEL_NAME
-HERMES_API_KEY=optional
+HERMES_API_KEY=
 ```
 
 Use the exact host/port shown by `hermes proxy start` if you changed defaults.
+If you authenticated through Hermes/Codex OAuth, leave `HERMES_API_KEY` blank.
 
 ## 4) Start Hermes Backend
 
@@ -97,6 +98,12 @@ Health check (new terminal):
 ```bash
 curl -sS http://localhost:8000/health
 ```
+
+For Hermes proxy mode, confirm the response shows:
+
+- `"provider": "hermes_agent"`
+- `"base_url": "http://127.0.0.1:8645/v1"` (or your custom proxy URL)
+- `"model": "YOUR_MODEL_NAME"`
 
 ## 5) Build Burp Extension JAR
 
@@ -223,3 +230,19 @@ Usually one of:
 1. No Burp traffic captured yet
 2. Wrong scope loaded
 3. Relevant hosts excluded in domain filter
+
+### Chat does not use your Hermes/OpenRouter model
+
+Check backend config first:
+
+```bash
+curl -sS http://localhost:8000/health
+```
+
+If `provider` is `mock` or `model` is empty, your env was not loaded correctly.
+
+Fix:
+
+1. Ensure `.env` is in repo root.
+2. Restart backend after editing `.env`.
+3. Re-check `/health` values before testing chat in Burp.

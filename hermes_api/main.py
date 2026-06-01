@@ -85,7 +85,14 @@ class CompleteQuestTaskRequest(BaseModel):
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "provider": settings.provider, "db_path": settings.db_path}
+    return {
+        "status": "ok",
+        "provider": settings.provider,
+        "db_path": settings.db_path,
+        "base_url": settings.base_url,
+        "model": settings.model,
+        "api_key_present": bool(settings.api_key),
+    }
 
 
 @app.get("/scopes")
