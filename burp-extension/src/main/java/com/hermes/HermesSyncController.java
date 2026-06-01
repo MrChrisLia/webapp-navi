@@ -59,6 +59,9 @@ public class HermesSyncController {
     private final JCheckBox runningBox;
     private final JTextArea logs;
     private final JTextArea insights;
+    private final JTextArea chatTranscript;
+    private final JTextField chatInput;
+    private final JButton chatSendButton;
 
     private final DefaultTableModel hostTableModel;
     private final JTable hostTable;
@@ -91,6 +94,11 @@ public class HermesSyncController {
         this.insights = new JTextArea();
         this.insights.setEditable(false);
         this.insights.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
+        this.chatTranscript = new JTextArea();
+        this.chatTranscript.setEditable(false);
+        this.chatTranscript.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
+        this.chatInput = new JTextField(24);
+        this.chatSendButton = new JButton("Send");
 
         this.hostTableModel = new DefaultTableModel(new Object[]{"Include", "Host", "Seen"}, 0) {
             @Override
@@ -233,10 +241,26 @@ public class HermesSyncController {
         JScrollPane insightsPane = new JScrollPane(insights);
         insightsPane.setBorder(BorderFactory.createTitledBorder("Hermes Insights"));
 
+        JPanel chatPanel = new JPanel(new BorderLayout(6, 6));
+        chatPanel.setBorder(BorderFactory.createTitledBorder("Hermes Chat"));
+        JScrollPane chatScroll = new JScrollPane(chatTranscript);
+        chatPanel.add(chatScroll, BorderLayout.CENTER);
+
+        JPanel chatInputRow = new JPanel(new BorderLayout(6, 6));
+        chatInputRow.add(chatInput, BorderLayout.CENTER);
+        chatInputRow.add(chatSendButton, BorderLayout.EAST);
+        chatPanel.add(chatInputRow, BorderLayout.SOUTH);
+
+        chatSendButton.addActionListener(e -> sendChatMessage());
+        chatInput.addActionListener(e -> sendChatMessage());
+
+        JSplitPane insightsChatSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, insightsPane, chatPanel);
+        insightsChatSplit.setResizeWeight(0.58);
+
         JScrollPane logPane = new JScrollPane(logs);
         logPane.setBorder(BorderFactory.createTitledBorder("Sync Logs"));
 
-        JSplitPane lowerSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, insightsPane, logPane);
+        JSplitPane lowerSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, insightsChatSplit, logPane);
         lowerSplit.setResizeWeight(0.72);
 
         JSplitPane mainSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, hostPanel, lowerSplit);
@@ -833,6 +857,37 @@ public class HermesSyncController {
         );
     }
 
+    private void sendChatMessage() {
+        String message = chatInput.getText().trim();
+        if (message.isEmpty()) {
+            return;
+        }
+        String scope = currentScope();
+        String backend = backendField.getText().trim();
+        appendChatLine("You", message);
+        chatInput.setText("");
+        setChatSending(true);
+        runInBackground(() -> {
+            HermesClient.ApiResult result = client.chat(backend, scope, message);
+            if (result.success()) {
+                String answer = extractJsonStringValue(result.body(), "answer");
+                if (answer.isEmpty()) {
+                    answer = result.body();
+                }
+                appendChatLine("Hermes", answer);
+                log("Chat reply received.");
+            } else {
+                appendChatLine("Hermes", "Chat request failed: HTTP " + result.statusCode() + ". " + result.body());
+                if (result.rateLimited()) {
+                    handleRateLimit("Chat", result.body());
+                } else {
+                    log("Chat request failed (HTTP " + result.statusCode() + ").");
+                }
+            }
+            setChatSending(false);
+        });
+    }
+
     private void runInBackground(Runnable task) {
         new Thread(task, "hermes-ui-action").start();
     }
@@ -853,6 +908,23 @@ public class HermesSyncController {
         });
     }
 
+    private void appendChatLine(String speaker, String text) {
+        SwingUtilities.invokeLater(() -> {
+            if (!chatTranscript.getText().isEmpty()) {
+                chatTranscript.append("\n");
+            }
+            chatTranscript.append(speaker + ": " + text + "\n");
+            chatTranscript.setCaretPosition(chatTranscript.getDocument().getLength());
+        });
+    }
+
+    private void setChatSending(boolean sending) {
+        SwingUtilities.invokeLater(() -> {
+            chatSendButton.setEnabled(!sending);
+            chatInput.setEnabled(!sending);
+        });
+    }
+
     private List<String> extractScopeNames(String json) {
         List<String> names = new ArrayList<>();
         java.util.regex.Matcher m = java.util.regex.Pattern
@@ -862,6 +934,21 @@ public class HermesSyncController {
             names.add(m.group(1).replace("\\\\\"", "\""));
         }
         return names;
+    }
+
+    private String extractJsonStringValue(String json, String key) {
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("\"" + java.util.regex.Pattern.quote(key) + "\"\\s*:\\s*\"(.*?)\"", java.util.regex.Pattern.DOTALL)
+                .matcher(json);
+        if (!m.find()) {
+            return "";
+        }
+        return m.group(1)
+                .replace("\\n", "\n")
+                .replace("\\r", "")
+                .replace("\\t", "\t")
+                .replace("\\\"", "\"")
+                .replace("\\\\", "\\");
     }
 
     private void refreshHostsFromHistory() {

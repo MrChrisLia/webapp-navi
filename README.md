@@ -129,7 +129,21 @@ Set backend URL in extension:
    - `View App Summary`
    - `Generate Quests`
 
-## 8) Skills (WSTG + Custom)
+## 8) Ask Hermes Questions In Burp (Chat Box)
+
+The `Hermes Insights` tab now includes a `Hermes Chat` panel.
+
+1. Keep the backend running (`http://localhost:8000` by default).
+2. Load or create the correct scope in the extension.
+3. Type a question in the chat input and press `Send` (or Enter).
+
+Notes:
+
+- Chat answers are scoped to the currently selected Hermes scope.
+- For real model answers, use `HERMES_PROVIDER=hermes_agent` (or `openai_compatible`) and a working model/proxy config.
+- If `HERMES_PROVIDER=mock`, chat still works but returns deterministic mock responses.
+
+## 9) Skills (WSTG + Custom)
 
 Check loaded skills:
 
@@ -145,7 +159,7 @@ Format reference:
 
 - `hermes_api/skills/README.md`
 
-## 9) Troubleshooting
+## 10) Troubleshooting
 
 ### No `.jar` after clone
 

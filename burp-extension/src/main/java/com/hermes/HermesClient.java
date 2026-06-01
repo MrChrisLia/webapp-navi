@@ -105,6 +105,15 @@ public class HermesClient {
         return request("POST", endpoint, payload);
     }
 
+    public ApiResult chat(String baseUrl, String scopeName, String message) {
+        String endpoint = stripTrailingSlash(baseUrl) + "/chat";
+        String payload = "{"
+                + "\"scope_name\":\"" + JsonUtil.escape(scopeName) + "\","
+                + "\"message\":\"" + JsonUtil.escape(message) + "\""
+                + "}";
+        return request("POST", endpoint, payload);
+    }
+
     private ApiResult request(String method, String endpoint, String payload) {
         try {
             HttpURLConnection conn = (HttpURLConnection) URI.create(endpoint).toURL().openConnection();

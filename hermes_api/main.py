@@ -12,6 +12,8 @@ Implements the backend-first roadmap from the project plan:
 """
 from __future__ import annotations
 
+import json
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
@@ -24,6 +26,7 @@ from hermes_api import wstg_skills
 from hermes_api import markdown_skills
 from hermes_api.config import settings
 from hermes_api.evidence import normalize_confidence
+from hermes_api.providers import get_provider
 from hermes_api.storage import store
 
 app = FastAPI(title="Hermes Web App Navigator", version="0.2.0")
@@ -42,8 +45,14 @@ class GenerateQuestsRequest(BaseModel):
     scope_name: str
     quest_type: str = "auto"
 
+
 class ScopeCreateRequest(BaseModel):
     scope_name: str
+
+
+class ChatRequest(BaseModel):
+    scope_name: str
+    message: str
 
 
 class ProxyImportItem(BaseModel):
@@ -320,3 +329,28 @@ def save_evidence(body: EvidenceRequest) -> dict:
         confidence=normalize_confidence(body.confidence),
     )
     return {"saved": True, "evidence_id": evidence_id}
+
+
+@app.post("/chat")
+def chat(body: ChatRequest) -> dict:
+    scope_name = body.scope_name.strip()
+    message = body.message.strip()
+    if not scope_name:
+        raise HTTPException(status_code=400, detail="scope_name is required")
+    if not message:
+        raise HTTPException(status_code=400, detail="message is required")
+
+    context = store.summary(scope_name)
+    context_json = json.dumps(context, ensure_ascii=True)
+    system_prompt = (
+        "You are Hermes, a web application security copilot inside Burp Suite. "
+        "Answer concisely, be technically correct, and ground answers in scope context. "
+        "If context is missing, say what traffic/scope data is needed."
+    )
+    user_prompt = (
+        f"Scope: {scope_name}\n"
+        f"Scope summary JSON:\n{context_json}\n\n"
+        f"Question:\n{message}"
+    )
+    answer = get_provider().chat(system_prompt, user_prompt)
+    return {"scope_name": scope_name, "answer": answer}

@@ -22,6 +22,12 @@ class OpenAICompatibleProvider(LLMProvider):
         self.timeout = 20.0
 
     def complete(self, prompt: str) -> str:
+        return self.chat(
+            "You summarize web security endpoint behavior in one concise sentence.",
+            prompt,
+        )
+
+    def chat(self, system_prompt: str, user_prompt: str) -> str:
         if not self.base_url or not self.model:
             return (
                 "LLM summary unavailable: configure HERMES_BASE_URL and HERMES_MODEL "
@@ -33,9 +39,9 @@ class OpenAICompatibleProvider(LLMProvider):
                 "messages": [
                     {
                         "role": "system",
-                        "content": "You summarize web security endpoint behavior in one concise sentence.",
+                        "content": system_prompt,
                     },
-                    {"role": "user", "content": prompt},
+                    {"role": "user", "content": user_prompt},
                 ],
                 "temperature": 0.1,
             }
@@ -86,4 +92,3 @@ def _extract_message_text(body: dict[str, Any]) -> str:
                     parts.append(t)
         return "\n".join(parts)
     return ""
-

@@ -16,6 +16,14 @@ class MockProvider(LLMProvider):
             return f"This endpoint appears to handle a {method} request to {path}."
         return "This endpoint could not be summarized (mock provider)."
 
+    def chat(self, system_prompt: str, user_prompt: str) -> str:
+        question = user_prompt.strip().splitlines()
+        if question:
+            q = question[-1].strip()
+            if q:
+                return f"[mock] Hermes chat is enabled. Question received: {q}"
+        return "[mock] Hermes chat is enabled, but no question text was provided."
+
 
 def _find(text: str, pattern: str) -> str:
     m = re.search(pattern, text)
