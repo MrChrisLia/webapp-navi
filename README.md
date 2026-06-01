@@ -246,3 +246,23 @@ Fix:
 1. Ensure `.env` is in repo root.
 2. Restart backend after editing `.env`.
 3. Re-check `/health` values before testing chat in Burp.
+
+### Chat returns `404 Not Found` on `/chat/completions`
+
+This usually means one of these:
+
+1. Wrong model name for the selected proxy provider.
+2. Wrong provider selected when starting proxy.
+
+Important: `hermes proxy start --provider nous` uses **Nous Portal** credentials/models, not your OpenRouter model picker.
+
+Quick checks:
+
+```bash
+hermes proxy status
+curl -sS http://127.0.0.1:8645/v1/models
+```
+
+Then set `HERMES_MODEL` to an ID returned by `/v1/models`.
+
+If you want OpenRouter-specific models, do not use `--provider nous` unless that model is actually available there.

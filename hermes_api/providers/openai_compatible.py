@@ -33,31 +33,41 @@ class OpenAICompatibleProvider(LLMProvider):
                 "LLM summary unavailable: configure HERMES_BASE_URL and HERMES_MODEL "
                 "for openai_compatible provider."
             )
-        try:
-            payload = {
-                "model": self.model,
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": system_prompt,
-                    },
-                    {"role": "user", "content": user_prompt},
-                ],
-                "temperature": 0.1,
-            }
-            response = self._post_json(self._chat_url(), payload)
-            text = _extract_message_text(response)
-            if text:
-                return text.strip()
-            return "LLM summary unavailable: empty response content from provider."
-        except Exception as exc:
-            return f"LLM summary unavailable: provider call failed ({exc})."
+        payload = {
+            "model": self.model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": system_prompt,
+                },
+                {"role": "user", "content": user_prompt},
+            ],
+            "temperature": 0.1,
+        }
+        errors: list[str] = []
+        for url in self._chat_urls():
+            try:
+                response = self._post_json(url, payload)
+                text = _extract_message_text(response)
+                if text:
+                    return text.strip()
+                return "LLM summary unavailable: empty response content from provider."
+            except Exception as exc:
+                errors.append(f"{url}: {exc}")
+        return "LLM summary unavailable: provider call failed (" + " | ".join(errors) + ")."
 
-    def _chat_url(self) -> str:
-        # If caller already supplied /chat/completions, use it directly.
+    def _chat_urls(self) -> list[str]:
+        # Accept either a full endpoint or a base URL and probe common variants.
         if self.base_url.endswith("/chat/completions"):
-            return self.base_url
-        return f"{self.base_url}/chat/completions"
+            return [self.base_url]
+
+        normalized = self.base_url.rstrip("/")
+        candidates = [f"{normalized}/chat/completions"]
+        if normalized.endswith("/v1"):
+            candidates.append(f"{normalized[:-3]}/chat/completions")
+        else:
+            candidates.append(f"{normalized}/v1/chat/completions")
+        return list(dict.fromkeys(candidates))
 
     def _post_json(self, url: str, payload: dict[str, Any]) -> dict[str, Any]:
         headers = {"Content-Type": "application/json"}
@@ -65,8 +75,18 @@ class OpenAICompatibleProvider(LLMProvider):
             headers["Authorization"] = f"Bearer {self.api_key}"
         with httpx.Client(timeout=self.timeout) as client:
             r = client.post(url, headers=headers, content=json.dumps(payload))
-            r.raise_for_status()
+            if r.status_code >= 400:
+                raise RuntimeError(f"HTTP {r.status_code}: {truncate(r.text)}")
             return r.json()
+
+
+def truncate(s: str, limit: int = 320) -> str:
+    if s is None:
+        return ""
+    text = s.strip()
+    if len(text) <= limit:
+        return text
+    return text[:limit] + "..."
 
 
 def _extract_message_text(body: dict[str, Any]) -> str:
