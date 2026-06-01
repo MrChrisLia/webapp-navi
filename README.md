@@ -32,11 +32,33 @@ curl -sS http://localhost:8000/health
 
 Expected: JSON with `"status":"ok"`.
 
-## 3) Load the Burp Extension
+## 3) Build the Burp Extension JAR
 
-Extension JAR path:
+Important: the `.jar` is not stored in GitHub. You must build it after cloning.
+
+### Option A (Recommended: Docker only, no Java/Gradle install)
+
+```bash
+docker run --rm \
+  -v "$PWD":/work \
+  -w /work/burp-extension \
+  gradle:8.10-jdk17 \
+  gradle clean jar
+```
+
+### Option B (If you already have Gradle + JDK installed)
+
+```bash
+cd burp-extension
+gradle clean jar
+cd ..
+```
+
+JAR output path:
 
 `burp-extension/build/libs/hermes-burp-sync-0.1.0.jar`
+
+## 4) Load the Burp Extension
 
 In Burp:
 
@@ -45,7 +67,7 @@ In Burp:
 3. Select `hermes-burp-sync-0.1.0.jar`
 4. Confirm it loads successfully
 
-## 4) Configure Burp + Hermes Tab
+## 5) Configure Burp + Hermes Tab
 
 Open the extension tab in Burp (`Hermes Insights`).
 
@@ -64,7 +86,7 @@ Recommended first step:
 1. Choose `Create Scope` -> `Run`
 2. Enter a scope name like `My First Test`
 
-## 5) Capture Traffic
+## 6) Capture Traffic
 
 In Burp, browse the target app using Burp’s browser (or your own browser through Burp proxy).
 
@@ -77,7 +99,7 @@ Then use:
 
 You should see readable analysis in the insights panel.
 
-## 6) Confirm Skills Loaded
+## 7) Confirm Skills Loaded
 
 Hermes includes WSTG + markdown skills and applies them per scope output.
 
@@ -98,7 +120,7 @@ Look for:
 - `wstg_recommended_skills`
 - `wstg_recommended_skill_details`
 
-## 7) Common Issues
+## 8) Common Issues
 
 ### Backend won’t start on port 8000
 
@@ -117,6 +139,12 @@ Check:
 2. Health endpoint works: `curl http://localhost:8000/health`
 3. `Hermes Backend` field in Burp is exactly `http://localhost:8000`
 
+### I cloned it but there is no `.jar`
+
+This is expected. Build it using Step 3 Option A (Docker command), then load:
+
+`burp-extension/build/libs/hermes-burp-sync-0.1.0.jar`
+
 ### No results in summary
 
 Usually one of:
@@ -125,7 +153,7 @@ Usually one of:
 2. Wrong scope selected
 3. Hosts excluded in domain filter
 
-## 8) Add Your Own Skills
+## 9) Add Your Own Skills
 
 Drop `.md` skill files into:
 
@@ -142,7 +170,7 @@ Reload skills without restart:
 curl -sS 'http://localhost:8000/skills?refresh=true'
 ```
 
-## 9) Useful Commands
+## 10) Useful Commands
 
 Start:
 
