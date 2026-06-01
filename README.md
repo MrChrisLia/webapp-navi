@@ -1,86 +1,91 @@
-# Hermes Security Insights (Beginner Setup)
+# Hermes Security Insights (Local Setup)
 
-This guide is for a brand-new machine where you only have:
+This project is now **local-only** (no Docker).
 
-- Burp Suite
-- Docker Desktop
+It runs a local backend on `http://localhost:8000` and a Burp extension that syncs Proxy traffic into that backend.
 
-Goal: run Hermes in Docker, load the Burp extension, and start getting automatic app summaries + quests from your Burp traffic.
-
-## 1) Clone the Repo (No GitHub Login)
-
-From a fresh VM:
+## 1) Clone
 
 ```bash
 git clone https://github.com/MrChrisLia/webapp-navi.git
 cd webapp-navi
 ```
 
-Important:
+## 2) Install Prerequisites
 
-- This only works without login if the repo is public.
-- If the repo is private, `git clone` will require authentication.
+You need:
 
-## 2) Start Hermes with Docker
+- Python 3.10+
+- Java 17+
+- Gradle
+- Burp Suite
 
-Run:
+Example (Ubuntu/Debian):
 
 ```bash
-docker compose up -d --build
+sudo apt update
+sudo apt install -y python3 python3-venv python3-pip openjdk-17-jdk gradle
 ```
 
-Verify backend is healthy:
+Verify:
 
 ```bash
-curl -sS http://localhost:8000/health
+python3 --version
+java -version
+gradle -v
 ```
 
-Expected: JSON with `"status":"ok"`.
+## 3) Configure Environment
 
-### Optional: Use your logged-in Hermes Agent runtime
-
-By default this project runs with `HERMES_PROVIDER=mock` (no login needed).
-
-If you want this backend to call your already-authenticated Hermes agent/model
-runtime, set provider env vars before starting Docker:
+Create `.env` (or copy `.env.example`):
 
 ```bash
-cat > .env <<'EOF'
+cp .env.example .env
+```
+
+### Default mode (no external model login)
+
+Keep:
+
+```bash
+HERMES_PROVIDER=mock
+```
+
+### Use your authenticated Hermes Agent model runtime
+
+If you already authenticated with `hermes model`, run the Hermes local proxy in another terminal:
+
+```bash
+hermes proxy
+```
+
+Then set in `.env`:
+
+```bash
 HERMES_PROVIDER=hermes_agent
-HERMES_BASE_URL=http://YOUR_AGENT_HOST:PORT/v1
+HERMES_BASE_URL=http://127.0.0.1:4141/v1
 HERMES_MODEL=YOUR_MODEL_NAME
 HERMES_API_KEY=optional
-EOF
 ```
 
-Then restart:
+Use the host/port shown by your `hermes proxy` output.
+
+## 4) Start Hermes Backend
 
 ```bash
-docker compose down
-docker compose up -d --build
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn hermes_api.main:app --host 0.0.0.0 --port 8000
 ```
 
-Health check will show active provider:
+Health check (new terminal):
 
 ```bash
 curl -sS http://localhost:8000/health
 ```
 
-## 3) Build the Burp Extension JAR
-
-Important: the `.jar` is not stored in GitHub. You must build it after cloning.
-
-### Option A (Recommended: Docker only, no Java/Gradle install)
-
-```bash
-docker run --rm \
-  -v "$PWD":/work \
-  -w /work/burp-extension \
-  gradle:8.10-jdk17 \
-  gradle clean jar
-```
-
-### Option B (If you already have Gradle + JDK installed)
+## 5) Build Burp Extension JAR
 
 ```bash
 cd burp-extension
@@ -88,54 +93,30 @@ gradle clean jar
 cd ..
 ```
 
-JAR output path:
+JAR path:
 
 `burp-extension/build/libs/hermes-burp-sync-0.1.0.jar`
 
-## 4) Load the Burp Extension
+## 6) Load Extension in Burp
 
-In Burp:
+1. Burp -> `Extensions` -> `Installed` -> `Add`
+2. Type: `Java`
+3. Select: `burp-extension/build/libs/hermes-burp-sync-0.1.0.jar`
+4. Open extension tab: `Hermes Insights`
 
-1. Go to `Extensions` -> `Installed` -> `Add`
-2. Extension type: `Java`
-3. Select `hermes-burp-sync-0.1.0.jar`
-4. Confirm it loads successfully
+Set backend URL in extension:
 
-## 5) Configure Burp + Hermes Tab
+`http://localhost:8000`
 
-Open the extension tab in Burp (`Hermes Insights`).
+## 7) First Use
 
-Set:
+1. In extension scope menu, run `Create Scope`
+2. Browse target through Burp Proxy
+3. Run:
+   - `View App Summary`
+   - `Generate Quests`
 
-- `Hermes Backend`: `http://localhost:8000`
-- Leave `Auto Sync Running` checked
-- Scope is menu-driven:
-  - `Load Scope`
-  - `Save Scope As...`
-  - `Create Scope`
-  - `Delete Scope`
-
-Recommended first step:
-
-1. Choose `Create Scope` -> `Run`
-2. Enter a scope name like `My First Test`
-
-## 6) Capture Traffic
-
-In Burp, browse the target app using Burp’s browser (or your own browser through Burp proxy).
-
-As new traffic appears in Burp Proxy history, Hermes auto-syncs request/response pairs to Docker backend.
-
-Then use:
-
-- `View App Summary` -> `Run`
-- `Generate Quests` -> `Run`
-
-You should see readable analysis in the insights panel.
-
-## 7) Confirm Skills Loaded
-
-Hermes includes WSTG + markdown skills and applies them per scope output.
+## 8) Skills (WSTG + Custom)
 
 Check loaded skills:
 
@@ -143,127 +124,59 @@ Check loaded skills:
 curl -sS 'http://localhost:8000/skills?refresh=true'
 ```
 
-Check current scope summary includes skills:
+Custom markdown skills location:
 
-```bash
-curl -sS 'http://localhost:8000/app-summary/My%20First%20Test'
-```
+- `hermes_api/skills`
 
-Look for:
-
-- `wstg_recommended_skills`
-- `wstg_recommended_skill_details`
-
-## 8) Common Issues
-
-### Backend won’t start on port 8000
-
-Another app is using `8000`. Find/stop it, or remap compose port.
-
-### Burp browser shows no internet / proxy issues
-
-Usually a local port conflict (often `8080`).
-If another app uses `8080`, change Burp proxy listener and browser proxy to a free port (for example `8081`), and keep them aligned.
-
-### Extension says sync failed
-
-Check:
-
-1. Docker backend is running: `docker compose ps`
-2. Health endpoint works: `curl http://localhost:8000/health`
-3. `Hermes Backend` field in Burp is exactly `http://localhost:8000`
-
-### I cloned it but there is no `.jar`
-
-This is expected. Build it using Step 3 Option A (Docker command), then load:
-
-`burp-extension/build/libs/hermes-burp-sync-0.1.0.jar`
-
-### Build error: `Could not find method java()` in `build.gradle`
-
-This is caused by Gradle-version differences on some VMs.
-
-Fix:
-
-1. Pull latest repo changes:
-   ```bash
-   git pull
-   ```
-2. Rebuild with Docker-based Gradle (recommended):
-   ```bash
-   docker run --rm \
-     -v "$PWD":/work \
-     -w /work/burp-extension \
-     gradle:8.10-jdk17 \
-     gradle clean jar
-   ```
-
-### Build error: `records are not supported in -source 12`
-
-Your VM is compiling with an old Java source level.
-
-Fix:
-
-1. Pull latest repo changes:
-   ```bash
-   git pull
-   ```
-2. Build with Docker Gradle + JDK 17:
-   ```bash
-   docker run --rm \
-     -v "$PWD":/work \
-     -w /work/burp-extension \
-     gradle:8.10-jdk17 \
-     gradle clean jar
-   ```
-
-### No results in summary
-
-Usually one of:
-
-1. No traffic captured yet
-2. Wrong scope selected
-3. Hosts excluded in domain filter
-
-## 9) Add Your Own Skills
-
-Drop `.md` skill files into:
-
-- Host path: `hermes_api/skills`
-- Container path: `/app/hermes_api/skills`
-
-Skill format reference:
+Format reference:
 
 - `hermes_api/skills/README.md`
 
-Reload skills without restart:
+## 9) Troubleshooting
+
+### No `.jar` after clone
+
+Expected. Build it in `burp-extension` using:
 
 ```bash
-curl -sS 'http://localhost:8000/skills?refresh=true'
+gradle clean jar
 ```
 
-## 10) Useful Commands
+### Build error: `records are not supported in -source 12`
 
-Start:
+Your build is using an old Java source level.
 
-```bash
-docker compose up -d --build
-```
+Fix:
 
-Stop:
+1. Ensure Java 17+ is installed and active:
+   ```bash
+   java -version
+   ```
+2. Pull latest repo changes:
+   ```bash
+   git pull
+   ```
+3. Rebuild:
+   ```bash
+   cd burp-extension
+   gradle clean jar
+   ```
 
-```bash
-docker compose down
-```
+### Extension sync fails
 
-Logs:
+Check:
 
-```bash
-docker compose logs -f hermes
-```
+1. Backend is running on `localhost:8000`
+2. Health endpoint responds:
+   ```bash
+   curl http://localhost:8000/health
+   ```
+3. Extension `Hermes Backend` is exactly `http://localhost:8000`
 
-Open shell in container:
+### App summary is empty
 
-```bash
-docker compose exec hermes sh
-```
+Usually one of:
+
+1. No Burp traffic captured yet
+2. Wrong scope loaded
+3. Relevant hosts excluded in domain filter
