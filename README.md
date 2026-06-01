@@ -1,20 +1,14 @@
 # Hermes Security Insights (Local Setup)
 
-This project is now **local-only** (no Docker).
+This project runs locally.
 
-It runs a local backend on `http://localhost:8000` and a Burp extension that syncs Proxy traffic into that backend.
+It includes:
+- A local backend at `http://localhost:8000`
+- A Burp extension that syncs Proxy traffic into that backend
 
-## 1) Clone
-
-```bash
-git clone https://github.com/MrChrisLia/hermes-burpsuite-agent.git
-cd hermes-burpsuite-agent
-```
-
-## 2) Install Prerequisites
+## 1) Install Prerequisites
 
 You need:
-
 - Python 3.10+
 - Java 17+
 - Gradle
@@ -35,77 +29,100 @@ java -version
 gradle -v
 ```
 
-## 3) Configure Environment
+## 2) Clone Repository
 
-Create `.env` (or copy `.env.example`):
+```bash
+git clone https://github.com/MrChrisLia/hermes-burpsuite-agent.git
+cd hermes-burpsuite-agent
+```
+
+## 3) Create Python Environment + Install Dependencies
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+## 4) Configure `.env`
+
+Create from template:
 
 ```bash
 cp .env.example .env
 ```
 
-### Default mode (no external model login)
+Then choose one runtime mode.
+### Hermes proxy mode (real model)
 
-Keep:
-
-```bash
-HERMES_PROVIDER=mock
-```
-
-### Use your authenticated Hermes Agent model runtime
-
-`hermes proxy` is a command group in newer Hermes CLI versions, so running it by itself shows help text. Start the proxy with a subcommand:
+1. Start proxy in another terminal:
 
 ```bash
 hermes proxy start
 ```
 
-Optional flags:
+Optional:
 
 ```bash
 hermes proxy start --provider nous --host 127.0.0.1 --port 8645
 ```
 
-Sanity-check readiness:
+2. Verify proxy:
 
 ```bash
 hermes proxy status
 hermes proxy providers
 ```
 
-Then set in `.env`:
+List model IDs:
+
+```bash
+curl -sS http://127.0.0.1:8645/v1/models | jq -r '.data[].id'
+```
+
+3. Set `.env`:
 
 ```bash
 HERMES_PROVIDER=hermes_agent
 HERMES_BASE_URL=http://127.0.0.1:8645/v1
-HERMES_MODEL=YOUR_MODEL_NAME
+HERMES_MODEL=EXACT_MODEL_ID_FROM_V1_MODELS
 HERMES_API_KEY=
 ```
 
-Use the exact host/port shown by `hermes proxy start` if you changed defaults.
-If you authenticated through Hermes/Codex OAuth, leave `HERMES_API_KEY` blank.
-
-## 4) Start Hermes Backend
+Example `.env` (filled):
 
 ```bash
-python3 -m venv .venv
+HERMES_PROVIDER=hermes_agent
+HERMES_BASE_URL=http://127.0.0.1:8645/v1
+HERMES_MODEL=openai/gpt-4o-mini
+HERMES_API_KEY=sk-or-v1-********************************abcd
+```
+
+Notes:
+- Use the exact host/port from your proxy command if you changed defaults.
+- `HERMES_MODEL` must be an exact model ID returned by `/v1/models`.
+
+## 5) Start Backend
+
+After the `.env` is setup, start the backend:
+
+```bash
 source .venv/bin/activate
-pip install -r requirements.txt
 uvicorn hermes_api.main:app --host 0.0.0.0 --port 8000
 ```
 
-Health check (new terminal):
+In another terminal, verify:
 
 ```bash
 curl -sS http://localhost:8000/health
 ```
 
-For Hermes proxy mode, confirm the response shows:
-
+For proxy mode, confirm `/health` shows:
 - `"provider": "hermes_agent"`
 - `"base_url": "http://127.0.0.1:8645/v1"` (or your custom proxy URL)
-- `"model": "YOUR_MODEL_NAME"`
+- `"model": "YOUR_MODEL_ID"`
 
-## 5) Build Burp Extension JAR
+## 6) Build Burp Extension
 
 ```bash
 cd burp-extension
@@ -113,22 +130,18 @@ gradle clean jar
 cd ..
 ```
 
-JAR path:
-
+Jar:
 `burp-extension/build/libs/hermes-burp-sync-0.1.0.jar`
 
-## 6) Load Extension in Burp
+## 7) Load Extension In Burp
 
 1. Burp -> `Extensions` -> `Installed` -> `Add`
 2. Type: `Java`
 3. Select: `burp-extension/build/libs/hermes-burp-sync-0.1.0.jar`
-4. Open extension tab: `Hermes Insights`
+4. Open tab: `Hermes Insights`
+5. Set `Hermes Backend` to `http://localhost:8000`
 
-Set backend URL in extension:
-
-`http://localhost:8000`
-
-## 7) First Use
+## 8) First Workflow In Burp
 
 1. In extension scope menu, run `Create Scope`
 2. Browse target through Burp Proxy
@@ -136,21 +149,19 @@ Set backend URL in extension:
    - `View App Summary`
    - `Generate Quests`
 
-## 8) Ask Hermes Questions In Burp (Chat Box)
+## 9) Use Hermes Chat In Burp
 
-The `Hermes Insights` tab now includes a `Hermes Chat` panel.
+The `Hermes Insights` tab includes a `Hermes Chat` panel.
 
-1. Keep the backend running (`http://localhost:8000` by default).
-2. Load or create the correct scope in the extension.
-3. Type a question in the chat input and press `Send` (or Enter).
+1. Keep backend running.
+2. Load/create the correct scope.
+3. Enter a question and press `Send` (or Enter).
 
 Notes:
+- Chat is scoped to the currently selected scope.
+- Real model answers require working proxy/provider/model config.
 
-- Chat answers are scoped to the currently selected Hermes scope.
-- For real model answers, use `HERMES_PROVIDER=hermes_agent` (or `openai_compatible`) and a working model/proxy config.
-- If `HERMES_PROVIDER=mock`, chat still works but returns deterministic mock responses.
-
-## 9) Skills (WSTG + Custom)
+## 10) Skills (WSTG + Custom)
 
 Check loaded skills:
 
@@ -158,58 +169,15 @@ Check loaded skills:
 curl -sS 'http://localhost:8000/skills?refresh=true'
 ```
 
-Custom markdown skills location:
+Custom markdown skills directory:
+`hermes_api/skills`
 
-- `hermes_api/skills`
+Skill format reference:
+`hermes_api/skills/README.md`
 
-Format reference:
-
-- `hermes_api/skills/README.md`
-
-## 10) Troubleshooting
-
-### No `.jar` after clone
-
-Expected. Build it in `burp-extension` using:
-
-```bash
-gradle clean jar
-```
-
-### Build error: `records are not supported in -source 12`
-
-Your build is using an old Java source level.
-
-Fix:
-
-1. Ensure Java 17+ is installed and active:
-   ```bash
-   java -version
-   ```
-2. Pull latest repo changes:
-   ```bash
-   git pull
-   ```
-3. Rebuild:
-   ```bash
-   cd burp-extension
-   gradle clean jar
-   ```
-
-### Extension sync fails
-
-Check:
-
-1. Backend is running on `localhost:8000`
-2. Health endpoint responds:
-   ```bash
-   curl http://localhost:8000/health
-   ```
-3. Extension `Hermes Backend` is exactly `http://localhost:8000`
+## 11) Troubleshooting
 
 ### `hermes proxy` only prints usage/help
-
-This is expected on newer CLI versions when no subcommand is supplied.
 
 Use:
 
@@ -223,90 +191,98 @@ Not:
 hermes proxy
 ```
 
+### No `.jar` after clone
+
+Expected. Build in `burp-extension`:
+
+```bash
+gradle clean jar
+```
+
+### Extension sync fails
+
+Check:
+1. Backend is running on `localhost:8000`
+2. Health endpoint responds:
+   ```bash
+   curl -sS http://localhost:8000/health
+   ```
+3. Burp extension backend URL is exactly `http://localhost:8000`
+
 ### App summary is empty
 
-Usually one of:
-
+Usually:
 1. No Burp traffic captured yet
 2. Wrong scope loaded
-3. Relevant hosts excluded in domain filter
+3. Relevant hosts are excluded in domain filter
 
-### Chat does not use your Hermes/OpenRouter model
+### Chat does not use expected model
 
-Check backend config first:
+Check:
 
 ```bash
 curl -sS http://localhost:8000/health
 ```
 
-If `provider` is `mock` or `model` is empty, your env was not loaded correctly.
+If `model` is empty/wrong, backend config is wrong.
 
 Fix:
-
-1. Ensure `.env` is in repo root.
-2. Restart backend after editing `.env`.
-3. Re-check `/health` values before testing chat in Burp.
-
-### `/health` still shows wrong model (for example `model: "nous"`)
-
-If chat keeps saying model not found, trust `/health` as the source of truth.
-If `/health` shows `"model":"nous"`, your backend process is still using that value.
-
-Fix:
-
-1. Verify the repo-root `.env` value:
+1. Verify repo-root `.env`:
    ```bash
    grep -n '^HERMES_' .env
    ```
-2. Check for duplicate `.env` files in nearby folders:
+2. Check for duplicate `.env` files:
    ```bash
    find .. -maxdepth 3 -name .env
    ```
-3. Fully restart backend from the repo root:
+3. Fully restart backend from repo root:
    ```bash
    pkill -f "uvicorn hermes_api.main:app" || true
    uvicorn hermes_api.main:app --host 0.0.0.0 --port 8000
    ```
-4. Confirm the new value is active:
-   ```bash
-   curl -sS http://localhost:8000/health
-   ```
-
-Only continue testing Burp chat after `/health` shows your intended model ID.
+4. Re-check `/health` and only then test Burp chat.
 
 ### Chat returns `404 Not Found` on `/chat/completions`
 
-This usually means one of these:
+Usually:
+1. Wrong model ID for selected proxy provider
+2. Wrong provider selected when starting proxy
 
-1. Wrong model name for the selected proxy provider.
-2. Wrong provider selected when starting proxy.
-
-Important: `hermes proxy start --provider nous` uses **Nous Portal** credentials/models, not your OpenRouter model picker.
-
-Quick checks:
-
-```bash
-hermes proxy status
-curl -sS http://127.0.0.1:8645/v1/models
-```
-
-Then set `HERMES_MODEL` to an ID returned by `/v1/models`.
-
-If you want OpenRouter-specific models, do not use `--provider nous` unless that model is actually available there.
-
-### Chat fails with `HTTP 0` and `I/O timeout`
-
-This means Burp reached the Hermes backend, but the chat response took too long.
-Large/slow models or temporary provider latency can trigger this.
+Important:
+`hermes proxy start --provider nous` uses Nous Portal models.
 
 Checks:
 
-1. Confirm backend is still alive while chat is running:
-   ```bash
-   curl -sS http://localhost:8000/health
-   ```
-2. Retry with a short prompt and verify proxy readiness:
-   ```bash
-   hermes proxy status
-   ```
-3. Ensure your selected model is valid for the current proxy provider (`/v1/models`).
+```bash
+hermes proxy status
+```
+
+Then list available model IDs:
+
+```bash
+curl -sS http://127.0.0.1:8645/v1/models | jq -r '.data[].id'
+```
+
+Set `HERMES_MODEL` to a model ID returned by `/v1/models`.
+
+Example:
+
+```text
+Hermes: LLM summary unavailable: provider call failed
+(http://127.0.0.1:8645/v1/chat/completions: HTTP 404:
+{"status":404,"message":"Model 'openai/gpt-5.3-codex' requires available credits. Your account balance is too low to use paid models ..."}
+...)
+```
+
+Meaning:
+- The selected model is paid for the current proxy provider/account.
+- ChatGPT subscription login does not automatically grant provider API credits for proxy calls.
+- This can happen even if you try `openrouter/owl-alpha`; treat that as a model suggestion only and verify it is available/usable in your `/v1/models` + current billing path.
+
+Fix:
+1. Pick a free model from `/v1/models`, or
+2. Add credits to the provider account used by the proxy.
+
+### Chat fails with `HTTP 0` and `I/O timeout`
+
+This means backend was reachable, but response took too long.
