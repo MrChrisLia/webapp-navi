@@ -7,14 +7,19 @@ This guide is for a brand-new machine where you only have:
 
 Goal: run Hermes in Docker, load the Burp extension, and start getting automatic app summaries + quests from your Burp traffic.
 
-## 1) Get the Project Files
+## 1) Clone the Repo (No GitHub Login)
 
-Use either option:
+From a fresh VM:
 
-1. `git clone` the repo (if Git is installed), or
-2. Download ZIP from GitHub and extract it.
+```bash
+git clone https://github.com/MrChrisLia/webapp-navi.git
+cd webapp-navi
+```
 
-Open a terminal in the project root (the folder containing `docker-compose.yml`).
+Important:
+
+- This only works without login if the repo is public.
+- If the repo is private, `git clone` will require authentication.
 
 ## 2) Start Hermes with Docker
 
