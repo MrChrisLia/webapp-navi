@@ -150,6 +150,25 @@ This is expected. Build it using Step 3 Option A (Docker command), then load:
 
 `burp-extension/build/libs/hermes-burp-sync-0.1.0.jar`
 
+### Build error: `Could not find method java()` in `build.gradle`
+
+This is caused by Gradle-version differences on some VMs.
+
+Fix:
+
+1. Pull latest repo changes:
+   ```bash
+   git pull
+   ```
+2. Rebuild with Docker-based Gradle (recommended):
+   ```bash
+   docker run --rm \
+     -v "$PWD":/work \
+     -w /work/burp-extension \
+     gradle:8.10-jdk17 \
+     gradle clean jar
+   ```
+
 ### No results in summary
 
 Usually one of:

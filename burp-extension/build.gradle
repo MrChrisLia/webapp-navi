@@ -5,9 +5,11 @@ plugins {
 group = 'com.hermes'
 version = '0.1.0'
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+// Keep this Gradle file compatible with both older and newer Gradle versions.
+def javaExt = extensions.findByName('java')
+if (javaExt != null) {
+    javaExt.sourceCompatibility = JavaVersion.toVersion('17')
+    javaExt.targetCompatibility = JavaVersion.toVersion('17')
 }
 
 repositories {
@@ -18,7 +20,9 @@ dependencies {
     compileOnly 'net.portswigger.burp.extensions:montoya-api:2026.4'
 }
 
-tasks.withType(JavaCompile).configureEach {
+tasks.withType(JavaCompile).all {
     options.encoding = 'UTF-8'
-    options.release = 17
+    if (options.hasProperty('release')) {
+        options.release = 17
+    }
 }
