@@ -1,0 +1,17 @@
+services:
+  hermes:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      HERMES_PROVIDER: ${HERMES_PROVIDER:-mock}
+      HERMES_BASE_URL: ${HERMES_BASE_URL:-http://localhost:11434/v1}
+      HERMES_MODEL: ${HERMES_MODEL:-some-model-name}
+      HERMES_API_KEY: ${HERMES_API_KEY:-optional}
+      HERMES_DB_PATH: ${HERMES_DB_PATH:-hermes_api/data/hermes.sqlite}
+      HERMES_SKILLS_DIR: ${HERMES_SKILLS_DIR:-/app/hermes_api/skills}
+    volumes:
+      - ./hermes_api:/app/hermes_api

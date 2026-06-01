@@ -1,0 +1,34 @@
+id: broken_access_control_idor
+name: IDOR / Object Authorization Check
+owasp_category: Broken Access Control
+signals:
+  - numeric_id_in_path
+  - uuid_in_path
+  - object_id_parameter
+  - account_id
+  - user_id
+  - project_id
+  - invoice_id
+  - organization_id
+  - tenant_id
+use_when:
+  - endpoint_returns_object_data
+  - endpoint_modifies_object
+  - endpoint_downloads_file
+  - endpoint_exports_data
+tests:
+  - replay_as_lower_privileged_user
+  - swap_object_id
+  - remove_authorization_header
+  - compare_cross_tenant_access
+  - test_write_action_as_wrong_user
+evidence:
+  - unauthorized_200_response
+  - sensitive_fields_present
+  - object_owner_mismatch
+  - write_action_succeeds
+  - file_download_succeeds
+false_positive_checks:
+  - object_is_public
+  - user_has_shared_access
+  - endpoint_returns_only_public_metadata
