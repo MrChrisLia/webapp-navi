@@ -169,6 +169,25 @@ Fix:
      gradle clean jar
    ```
 
+### Build error: `records are not supported in -source 12`
+
+Your VM is compiling with an old Java source level.
+
+Fix:
+
+1. Pull latest repo changes:
+   ```bash
+   git pull
+   ```
+2. Build with Docker Gradle + JDK 17:
+   ```bash
+   docker run --rm \
+     -v "$PWD":/work \
+     -w /work/burp-extension \
+     gradle:8.10-jdk17 \
+     gradle clean jar
+   ```
+
 ### No results in summary
 
 Usually one of:
