@@ -19,3 +19,9 @@ burp-extension/build/
 
 # Logs
 *.log
+
+# Gradle local cache
+**/.gradle/
+
+# Local runtime DB
+hermes_api/data/*.sqlite
